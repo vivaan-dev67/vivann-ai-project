@@ -1,13 +1,11 @@
 import streamlit as st
 import google.generativeai as genai
 import PIL.Image
-import io
 
-# --- 1. PAGE CONFIGURATION ---
+# --- 1. SETUP & SECRETS ---
 st.set_page_config(page_title="Vivann AI Project", page_icon="🚀")
 
-# --- 2. API KEY SETUP (The "Ma'am Fix") ---
-# Automatically pulls from Secrets so Ma'am doesn't have to log in
+# Automatically pulls from your Streamlit Secrets dashboard
 api_key = st.secrets.get("GEMINI_API_KEY") or st.sidebar.text_input("Enter Gemini API Key", type="password")
 
 if not api_key:
@@ -16,53 +14,43 @@ if not api_key:
 
 genai.configure(api_key=api_key)
 
-# --- 3. UI HEADER ---
+# --- 2. THE GEMINI 3.1 MODEL SETUP ---
+# For Gemini 3.1, we use the specific model ID. 
+# If 'gemini-3.1-flash' gives an error, it will try the preview version.
+try:
+    model = genai.GenerativeModel('gemini-3.1-flash')
+except:
+    try:
+        model = genai.GenerativeModel('gemini-3.1-flash-preview')
+    except Exception as e:
+        st.error(f"Could not connect to Gemini 3.1: {e}")
+        st.stop()
+
+# --- 3. THE UI ---
 st.title("🚀 Vivann AI Project")
-st.caption("Math Solver + Image & Audio Recognition")
+st.caption("Powered by Gemini 3.1 Flash")
 
-# --- 4. SIDEBAR SETTINGS ---
-with st.sidebar:
-    st.header("Settings")
-    mode = st.selectbox("Choose Mode", ["Math & General", "Image Analysis", "Audio Insight"])
-    st.divider()
-    st.write("Project inspired by *Kaushal Bodh* logic.")
+mode = st.sidebar.selectbox("Choose Mode", ["Math & General", "Image Analysis"])
 
-# --- 5. AI LOGIC ---
-model = genai.GenerativeModel('gemini-1.5-flash')
-
-# MODE: MATH & GENERAL
+# --- 4. THE LOGIC ---
 if mode == "Math & General":
-    user_query = st.text_input("Ask a math problem or any question:")
+    user_query = st.text_input("Ask a math problem:")
     if user_query:
-        with st.spinner("Analyzing..."):
-            response = model.generate_content(f"Explain this simply: {user_query}")
+        with st.spinner("Gemini 3.1 is thinking..."):
+            response = model.generate_content(user_query)
             st.subheader("Analysis Complete")
             st.write(response.text)
 
-# MODE: IMAGE ANALYSIS
 elif mode == "Image Analysis":
-    uploaded_file = st.file_uploader("Upload an image (Math problem, diagram, etc.)", type=["png", "jpg", "jpeg"])
+    uploaded_file = st.file_uploader("Upload an image", type=["png", "jpg", "jpeg"])
     if uploaded_file:
         img = PIL.Image.open(uploaded_file)
-        st.image(img, caption="Uploaded Image", use_column_width=True)
-        
+        st.image(img, caption="Uploaded Image")
         if st.button("Analyze Image"):
-            with st.spinner("Processing image..."):
-                response = model.generate_content(["Describe this image and solve any math problems shown:", img])
-                st.subheader("Results")
+            with st.spinner("Gemini 3.1 is scanning..."):
+                response = model.generate_content(["Solve this math and describe the image:", img])
                 st.write(response.text)
 
-# MODE: AUDIO INSIGHT
-elif mode == "Audio Insight":
-    audio_file = st.file_uploader("Upload audio for transcription/analysis", type=["mp3", "wav"])
-    if audio_file:
-        st.audio(audio_file)
-        if st.button("Transcribe Audio"):
-            st.warning("Note: Audio processing requires specific library setup. Gemini is analyzing the file metadata.")
-            # For a basic setup, we describe the file. 
-            # Full audio processing usually requires saving to a temp file first.
-            st.write("Audio file received successfully.")
-
-# --- 6. FOOTER ---
-st.divider()
-st.caption("Developed with Python & Gemini AI | Built on an i7 System")
+st.sidebar.divider()
+st.sidebar.write("System: Gemini 3.1 Flash")
+st.sidebar.write("Project inspired by *Kaushal Bodh*.")
