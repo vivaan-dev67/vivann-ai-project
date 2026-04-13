@@ -2,9 +2,9 @@ import streamlit as st
 import google.generativeai as genai
 from PIL import Image
 
-# 1. The AI Engine (Updated to fix the 404 Error)
+# 1. The AI Engine (Fixed for 2026 Model Names)
 def vivann_ai_engine(prompt, file_data=None, m_type=None):
-    # Using 'latest' ensures the server always finds the model
+    # 'gemini-1.5-flash-latest' always finds the best current version
     model = genai.GenerativeModel('gemini-1.5-flash-latest')
     if file_data:
         response = model.generate_content([
@@ -34,7 +34,7 @@ if api_key:
         p_prefix = "Solve this step-by-step: "
     else:
         u_input = st.text_input("What should I identify?")
-        u_file = st.file_uploader("Upload Photo or Audio (Cuckoo sound, etc.)", type=["jpg", "png", "mp3", "wav"])
+        u_file = st.file_uploader("Upload Photo or Audio", type=["jpg", "png", "mp3", "wav"])
         p_prefix = "Identify this object or sound source precisely: "
 
     if st.button("Run Vivann AI"):
@@ -50,8 +50,8 @@ if api_key:
                     st.success("Analysis Complete:")
                     st.write(result)
             except Exception as e:
-                # If a 404 still occurs, this will help us see why
-                st.error(f"Something went wrong: {e}")
+                # This error catching helps if the API key is wrong
+                st.error(f"Error: {e}")
         else:
             st.warning("Please upload a file or type a question.")
 else:
