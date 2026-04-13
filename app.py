@@ -2,12 +2,11 @@ import streamlit as st
 import google.generativeai as genai
 from PIL import Image
 
-# 1. The AI Engine (Handles Text, Images, and Audio)
+# 1. The AI Engine (Updated to fix the 404 Error)
 def vivann_ai_engine(prompt, file_data=None, m_type=None):
-    # Using the stable 2026 model
-    model = genai.GenerativeModel('gemini-1.5-flash')
+    # Using 'latest' ensures the server always finds the model
+    model = genai.GenerativeModel('gemini-1.5-flash-latest')
     if file_data:
-        # This sends the file (photo or sound) to Google
         response = model.generate_content([
             prompt, 
             {'mime_type': m_type, 'data': file_data}
@@ -16,7 +15,7 @@ def vivann_ai_engine(prompt, file_data=None, m_type=None):
         response = model.generate_content(prompt)
     return response.text
 
-# 2. The Interface
+# 2. Interface Design
 st.set_page_config(page_title="Vivann AI Project", layout="centered")
 st.title("🚀 Vivann AI Project")
 st.write("Math Solver + Image & Audio Recognition")
@@ -34,7 +33,7 @@ if api_key:
         u_file = st.file_uploader("Upload Math Photo (Optional)", type=["jpg", "png", "jpeg"])
         p_prefix = "Solve this step-by-step: "
     else:
-        u_input = st.text_input("What is this?")
+        u_input = st.text_input("What should I identify?")
         u_file = st.file_uploader("Upload Photo or Audio (Cuckoo sound, etc.)", type=["jpg", "png", "mp3", "wav"])
         p_prefix = "Identify this object or sound source precisely: "
 
@@ -42,18 +41,17 @@ if api_key:
         if u_file or u_input:
             try:
                 with st.spinner("Vivann AI is analyzing..."):
-                    # Prepare the file data
                     f_bytes = u_file.getvalue() if u_file else None
                     f_type = u_file.type if u_file else None
                     
-                    # Combine the prompt and run
                     final_p = f"{p_prefix} {u_input}"
                     result = vivann_ai_engine(final_p, f_bytes, f_type)
                     
                     st.success("Analysis Complete:")
                     st.write(result)
             except Exception as e:
-                st.error(f"Error: {e}")
+                # If a 404 still occurs, this will help us see why
+                st.error(f"Something went wrong: {e}")
         else:
             st.warning("Please upload a file or type a question.")
 else:
