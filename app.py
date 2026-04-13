@@ -2,50 +2,50 @@ import streamlit as st
 import google.generativeai as genai
 import PIL.Image
 
-# --- 1. SETUP ---
+# --- 1. PAGE SETUP ---
 st.set_page_config(page_title="Vivann AI Project", page_icon="🚀")
 
-# Pulls from your Streamlit "Secrets" dashboard
+# PULLING FROM SECRETS (Hidden from everyone but you)
 api_key = st.secrets.get("GEMINI_API_KEY") or st.sidebar.text_input("Enter Gemini API Key", type="password")
 
 if not api_key:
-    st.info("👋 Please enter your API Key in the sidebar to start.")
+    st.info("👋 Welcome! Please enter an API Key to start or check 'Secrets' configuration.")
     st.stop()
 
 genai.configure(api_key=api_key)
 
-# --- 2. THE SMART MODEL PICKER (Fixes the 404 Error) ---
+# --- 2. THE MODEL AUTO-PICKER (Fixes the 404/NotFound Error) ---
 @st.cache_resource
-def get_best_model():
-    # We try the newest Gemini 3.1 IDs first
-    test_models = [
+def get_model():
+    # We try the most likely Gemini 3.1 and 3.0 names in order
+    model_names = [
         'gemini-3.1-flash-lite-preview', 
         'gemini-3.1-flash-preview', 
-        'gemini-2.5-flash' # Ultimate fallback
+        'gemini-3-flash-preview'
     ]
-    for m_name in test_models:
+    for name in model_names:
         try:
-            m = genai.GenerativeModel(m_name)
-            # Try a tiny test call to see if the model name is 'Found'
+            m = genai.GenerativeModel(name)
+            # Do a tiny test to see if this model exists
             m.generate_content("test", generation_config={"max_output_tokens": 1})
-            return m, m_name
-        except Exception:
+            return m, name
+        except:
             continue
-    st.error("Could not connect to any Gemini models. Check your API key.")
-    st.stop()
+    # If all 3.x models fail, use the 2.5 stable version as a backup
+    return genai.GenerativeModel('gemini-2.5-flash'), "gemini-2.5-flash"
 
-model, model_name = get_best_model()
+model, active_model_name = get_model()
 
-# --- 3. THE INTERFACE ---
+# --- 3. THE UI ---
 st.title("🚀 Vivann AI Project")
-st.caption(f"Currently active: {model_name}")
+st.caption(f"Running on: {active_model_name}")
 
 mode = st.sidebar.selectbox("Choose Mode", ["Math & General", "Image Analysis"])
 
 if mode == "Math & General":
     user_query = st.text_input("Ask a math problem:")
     if user_query:
-        with st.spinner("Analyzing..."):
+        with st.spinner(f"Analyzing with {active_model_name}..."):
             response = model.generate_content(user_query)
             st.subheader("Analysis Complete")
             st.write(response.text)
@@ -56,9 +56,10 @@ elif mode == "Image Analysis":
         img = PIL.Image.open(uploaded_file)
         st.image(img, caption="Uploaded Image")
         if st.button("Analyze Image"):
-            with st.spinner("Scanning image..."):
+            with st.spinner("Scanning..."):
                 response = model.generate_content(["Solve this math and describe the image:", img])
                 st.write(response.text)
 
 st.sidebar.divider()
-st.sidebar.write("Project inspired by *Kaushal Bodh*.")
+st.sidebar.write(f"System: {active_model_name}")
+st.sidebar.write("Developed by Vivann.")
