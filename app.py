@@ -5,7 +5,7 @@ import PIL.Image
 # --- 1. SETUP ---
 st.set_page_config(page_title="Vivann AI Project", page_icon="🚀")
 
-# Pulls from Secrets
+# Pulls from your Streamlit "Secrets" dashboard
 api_key = st.secrets.get("GEMINI_API_KEY") or st.sidebar.text_input("Enter Gemini API Key", type="password")
 
 if not api_key:
@@ -14,18 +14,31 @@ if not api_key:
 
 genai.configure(api_key=api_key)
 
-# --- 2. THE GEMINI 3.1 FIX ---
-# 'gemini-3.1-flash-lite-preview' is the most stable name for 3.1 right now.
-try:
-    model = genai.GenerativeModel('gemini-3.1-flash-lite-preview')
-except Exception as e:
-    # If lite isn't available, we fallback to 2.5 flash which always works
-    model = genai.GenerativeModel('gemini-2.5-flash')
-    st.sidebar.warning("Note: Using Gemini 2.5 Flash as fallback.")
+# --- 2. THE SMART MODEL PICKER (Fixes the 404 Error) ---
+@st.cache_resource
+def get_best_model():
+    # We try the newest Gemini 3.1 IDs first
+    test_models = [
+        'gemini-3.1-flash-lite-preview', 
+        'gemini-3.1-flash-preview', 
+        'gemini-2.5-flash' # Ultimate fallback
+    ]
+    for m_name in test_models:
+        try:
+            m = genai.GenerativeModel(m_name)
+            # Try a tiny test call to see if the model name is 'Found'
+            m.generate_content("test", generation_config={"max_output_tokens": 1})
+            return m, m_name
+        except Exception:
+            continue
+    st.error("Could not connect to any Gemini models. Check your API key.")
+    st.stop()
+
+model, model_name = get_best_model()
 
 # --- 3. THE INTERFACE ---
 st.title("🚀 Vivann AI Project")
-st.caption("Powered by Gemini 3.1 Flash-Lite")
+st.caption(f"Currently active: {model_name}")
 
 mode = st.sidebar.selectbox("Choose Mode", ["Math & General", "Image Analysis"])
 
