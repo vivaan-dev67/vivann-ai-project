@@ -2,53 +2,53 @@ import streamlit as st
 import google.generativeai as genai
 import PIL.Image
 
-# --- 1. PAGE SETUP ---
+# --- 1. QUICK SETUP ---
 st.set_page_config(page_title="Vivann AI Project", page_icon="🚀")
 
-# PULLING FROM SECRETS (Hidden from everyone but you)
 api_key = st.secrets.get("GEMINI_API_KEY") or st.sidebar.text_input("Enter Gemini API Key", type="password")
 
 if not api_key:
-    st.info("👋 Welcome! Please enter an API Key to start or check 'Secrets' configuration.")
+    st.info("👋 Welcome! System is ready. (Awaiting API Key)")
     st.stop()
 
 genai.configure(api_key=api_key)
 
-# --- 2. THE MODEL AUTO-PICKER (Fixes the 404/NotFound Error) ---
+# --- 2. FAST MODEL PICKER (No more 4-minute wait) ---
 @st.cache_resource
-def get_model():
-    # We try the most likely Gemini 3.1 and 3.0 names in order
-    model_names = [
-        'gemini-3.1-flash-lite-preview', 
-        'gemini-3.1-flash-preview', 
-        'gemini-3-flash-preview'
-    ]
-    for name in model_names:
+def get_working_model():
+    # We try the specific 3.1 Lite name first, then 2.5 as a solid backup
+    for name in ['gemini-3.1-flash-lite-preview', 'gemini-1.5-flash']:
         try:
             m = genai.GenerativeModel(name)
-            # Do a tiny test to see if this model exists
-            m.generate_content("test", generation_config={"max_output_tokens": 1})
+            # Short test to confirm it's "alive"
+            m.generate_content("Hi", generation_config={"max_output_tokens": 1})
             return m, name
         except:
             continue
-    # If all 3.x models fail, use the 2.5 stable version as a backup
-    return genai.GenerativeModel('gemini-2.5-flash'), "gemini-2.5-flash"
+    return None, None
 
-model, active_model_name = get_model()
+model, model_name = get_working_model()
 
-# --- 3. THE UI ---
+if not model:
+    st.error("Connection Timeout. Please refresh the page.")
+    st.stop()
+
+# --- 3. UI ---
 st.title("🚀 Vivann AI Project")
-st.caption(f"Running on: {active_model_name}")
+st.caption(f"⚡ Active Engine: {model_name}")
 
 mode = st.sidebar.selectbox("Choose Mode", ["Math & General", "Image Analysis"])
 
 if mode == "Math & General":
-    user_query = st.text_input("Ask a math problem:")
+    user_query = st.text_input("Ask a math problem (e.g., 1+1):")
     if user_query:
-        with st.spinner(f"Analyzing with {active_model_name}..."):
-            response = model.generate_content(user_query)
-            st.subheader("Analysis Complete")
-            st.write(response.text)
+        with st.spinner("Processing..."):
+            try:
+                response = model.generate_content(user_query)
+                st.subheader("Result")
+                st.write(response.text)
+            except Exception as e:
+                st.error("The AI is busy. Please try again in a moment.")
 
 elif mode == "Image Analysis":
     uploaded_file = st.file_uploader("Upload an image", type=["png", "jpg", "jpeg"])
@@ -57,9 +57,5 @@ elif mode == "Image Analysis":
         st.image(img, caption="Uploaded Image")
         if st.button("Analyze Image"):
             with st.spinner("Scanning..."):
-                response = model.generate_content(["Solve this math and describe the image:", img])
+                response = model.generate_content(["Solve this math:", img])
                 st.write(response.text)
-
-st.sidebar.divider()
-st.sidebar.write(f"System: {active_model_name}")
-st.sidebar.write("Developed by Vivann.")
